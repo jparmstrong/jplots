@@ -1,0 +1,58 @@
+[package]
+name = "jplots"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Terminal plots for q over the kitty graphics protocol"
+repository = "https://github.com/jparmstrong/jplots"
+readme = "README.md"
+keywords = ["kdb", "q", "plot", "terminal", "kitty"]
+categories = ["visualization", "command-line-interface"]
+exclude = ["/build", "/*.ppm", "/*.png"]
+
+# `cdylib` is the q extension loaded by `2:`; `rlib` lets a Rust host link the
+# renderer directly and skip the K marshalling entirely.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# A standalone kitty-protocol test pattern. Terminals fail silently and differently, so
+# `jplots-probe` sends the same picture several ways and the frames that render name what a
+# terminal rejects. It drives `kitty::encode_with`, the shipped encoder, not a copy.
+[[bin]]
+name = "jplots-probe"
+path = "src/bin/probe.rs"
+
+# A captured terminal session as an email: text as <pre>, plots as PNG parts, and the
+# sending script naming its own subject and recipients by printing EMAIL-* lines.
+[[bin]]
+name = "jplots-mail"
+path = "src/bin/mail.rs"
+required-features = ["mail"]
+
+# Deliberately small. `base64` and `flate2` are what the kitty protocol wants: base64
+# payloads, optionally zlib-compressed. `libc` is only for TIOCGWINSZ and termios.
+# Glyphs are a committed bitmap table, so there is no font stack to build.
+# `kapi` is the kdb+ `2:` entry point, and its `k.h` externs resolve from the q executable at
+# dlopen time. A Rust host that links jplots directly has no such symbols to offer, so it
+# takes the library without this feature and calls the renderer straight.
+[features]
+default = ["kapi", "mail"]
+kapi = []
+# `jplots-mail` and its template engine. Off, and the library is base64, flate2 and libc.
+mail = ["dep:minijinja"]
+
+[dependencies]
+base64 = "0.22"
+flate2 = "1"
+libc = "0.2"
+# Templating for `jplots-mail` only, and optional so the LIBRARY keeps its three. Default
+# features off: the builtins are the filters a template wants, and the rest (json, unicode
+# tables, speedups) is weight an email body never asks for.
+minijinja = { version = "2", optional = true, default-features = false, features = [
+  "builtins",
+  "serde",
+], }
+
+[profile.release]
+opt-level = 2
+

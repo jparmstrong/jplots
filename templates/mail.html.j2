@@ -1,0 +1,32 @@
+{#- The default email body. Override with --template FILE.
+
+     title    the --title text, or none
+     headers  a dict: to, from, subject, cc, bcc, reply_to (absent keys are undefined)
+     parts    the session in order. Each has .kind of "text" or "image".
+                text   .text
+                image  .src, .width, .height, .alt
+
+     `src` is already a cid: or data: URI, so a template never has to know which was chosen.
+
+     Mail clients override fonts, so the monospace stack is declared on every <pre>: a q
+     table in a proportional font stops being a table. Widths are attributes rather than CSS
+     because Outlook ignores CSS sizing on images. -#}
+<html>
+  <body style="margin:0;padding:16px;background:#ffffff;color:#111111;
+               font:14px -apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+    {%- if title %}
+    <h2 style="margin:0 0 12px;font-size:18px">{{ title }}</h2>
+    {%- elif headers.subject %}
+    <h2 style="margin:0 0 12px;font-size:18px">{{ headers.subject }}</h2>
+    {%- endif %}
+    {%- for p in parts %}
+      {%- if p.kind == "text" %}
+    <pre style="font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,'DejaVu Sans Mono',monospace;
+                white-space:pre;margin:0 0 12px;line-height:1.35">{{ p.text }}</pre>
+      {%- else %}
+    <img src="{{ p.src }}" alt="{{ p.alt }}" width="{{ p.width }}"
+         style="display:block;margin:0 0 12px;max-width:100%">
+      {%- endif %}
+    {%- endfor %}
+  </body>
+</html>
