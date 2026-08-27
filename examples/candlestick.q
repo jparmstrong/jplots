@@ -2,7 +2,10 @@
 /    JPLOTS_LIB=$PWD/target/release/libjplots q examples/candlestick.q -q
 / (No bare "/" lines in this file: a lone slash opens a block comment to EOF.)
 
-\l q/plt.q
+/ `q/plt.q` in the source tree, `plt.q` beside this file in a release tarball, and `plt.q` on
+/ q's own path once installed. `\l` is a command rather than a function, so choosing needs
+/ `system`.
+system "l ",$[count key`:q/plt.q; "q/plt.q"; "plt.q"]
 
 / The renderer, named on the command line, as in demo.q:  q examples/candlestick.q -q kitty
 if[count .z.x; .plt.renderer:`$first .z.x]

@@ -6,7 +6,10 @@
 / default is detected, and `jplots-mail` decodes whichever one it is back to pixels.
 / (No bare "/" lines in this file: a lone slash opens a block comment to EOF.)
 
-\l q/plt.q
+/ `q/plt.q` in the source tree, `plt.q` beside this file in a release tarball, and `plt.q` on
+/ q's own path once installed. `\l` is a command rather than a function, so choosing needs
+/ `system`.
+system "l ",$[count key`:q/plt.q; "q/plt.q"; "plt.q"]
 if[count .z.x; .plt.renderer:`$first .z.x]
 
 / Light theme and a pinned size: mail is read on white, and with stdout redirected there is no

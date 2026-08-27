@@ -7,7 +7,10 @@
 / Naming one is for forcing the other, or for capturing a stream to a file. See the README.
 / (No bare "/" lines in this file: a lone slash opens a block comment to EOF.)
 
-\l q/plt.q
+/ `q/plt.q` in the source tree, `plt.q` beside this file in a release tarball, and `plt.q` on
+/ q's own path once installed. `\l` is a command rather than a function, so choosing needs
+/ `system`.
+system "l ",$[count key`:q/plt.q; "q/plt.q"; "plt.q"]
 
 / The renderer, named on the command line. Anything else signals from the first chart with
 / the list of what is built, which is a better answer than a demo that draws nothing.

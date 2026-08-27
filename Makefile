@@ -66,6 +66,7 @@ dist: build test-rust
 	cp $(BUILT) $(DIST)/jplots-$(VERSION)/libjplots.so
 	cp $(MAIL) $(DIST)/jplots-$(VERSION)/jplots-mail
 	cp q/plt.q LICENSE README.md $(DIST)/jplots-$(VERSION)/
+	cp -R examples $(DIST)/jplots-$(VERSION)/examples
 	cd $(DIST) && tar czf jplots-$(VERSION)-$(OS)-$(ARCH).tar.gz jplots-$(VERSION)
 	@echo "$(DIST)/jplots-$(VERSION)-$(OS)-$(ARCH).tar.gz"
 

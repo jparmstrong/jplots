@@ -5,8 +5,6 @@ Draw plots directly in the kdb+/q prompt, rendered as pixels in your terminal ov
 [kitty graphics](https://sw.kovidgoyal.net/kitty/graphics-protocol/) protocol. Query, plot and
 iterate without leaving q. No notebook, no browser, no export step.
 
-Works with Kitty, Ghostty, iTerm2, and Windows Terminal (v1.22+). 
-
 ```q
 q)\l plt.q
 q).plt.line select date, close, vwap from trade where date within (2026.01.01;2026.08.19)
@@ -18,17 +16,20 @@ MIT licensed.
 
 ## Install
 
-Linux x64, or macOS on Apple silicon. Download the release tarball, or build it:
+Linux x64, or macOS on Apple silicon. Build it:
 
 ```sh
 make            # -> target/release/libjplots.so
 make install    # -> $QHOME/l64/libjplots.so, $QHOME/plt.q, ~/.local/bin/jplots-mail
 ```
 
+Or download the release tarball, which unpacks to the library, `plt.q`, `jplots-mail` and the
+examples, and runs from where it lands without installing.
+
 ## Plotting
 
 ```q
-.plt.line    select date, close, vwap from trade    / x = 1st column, a series per remaining one
+.plt.line    select date, close, vwap from trade
 .plt.scatter select px, size from trade
 .plt.bar     select cnt:count i by sym from trade
 .plt.hist    exec ret from returns
@@ -177,7 +178,6 @@ On the wire it beats kitty for flat charts (a 900x420 bar chart is 7 KB against 
 rows, so ten of them need a 140-row window; the rest scroll away, and whether you can scroll
 back to them is the terminal's business.
 
-
 ## Reports by email
 
 `jplots-mail` turns a captured session into a message: text runs become `<pre>` blocks, plots
@@ -226,16 +226,16 @@ semantic call rather than a blit, so an SVG backend can emit a real `<text>` ele
 **Argument munging stays in q.** `plt.q` reads a table's shape in a few lines that would be
 fifty of Rust, and the API can change without rebuilding the library.
 
-**No dependency tree.** `base64`, `flate2` and `libc` are the whole list; `jplots-mail`
-adds a template engine behind the `mail` feature, so `--no-default-features` is still those three. Pixels go out as
-zlib-compressed RGB, so there is no PNG encoder, and glyphs come from a 6x13 bitmap table
-generated from the public-domain X11 `misc-fixed` font.
+**No dependency tree.** `base64`, `flate2` and `libc` are the whole list, and `jplots-mail`
+adds a template engine behind the `mail` feature. Pixels go out as zlib-compressed RGB, so
+there is no PNG encoder, and glyphs come from a 6x13 bitmap table generated from the
+public-domain X11 `misc-fixed` font.
 
 ## Development
 
 ```sh
 make test      # cargo tests, then tests/test.q under kdb+
-make demo      # every chart type, on sample data;  add `kitty` to switch renderer
+make demo      # every chart type, on sample data; name a renderer to force one
 make images    # regenerate docs/img/ from the examples
 ```
 
