@@ -7,6 +7,9 @@
 Q       ?= q
 QHOME   ?= $(HOME)/.kx
 PREFIX  ?= $(QHOME)/l64
+# `jplots-mail` is a command, not a q extension, so it installs on PATH rather than beside
+# the library. ~/.local/bin needs no sudo and is already on PATH on most systems.
+BINDIR  ?= $(HOME)/.local/bin
 ARCH    := $(shell uname -m)
 OS_NAME := $(shell uname -s)
 OS      := $(shell echo $(OS_NAME) | tr A-Z a-z)
@@ -15,6 +18,7 @@ OS      := $(shell echo $(OS_NAME) | tr A-Z a-z)
 # set BEFORE this line: `:=` expands now, and an empty one silently picks the wrong branch.
 BUILT   := target/release/libjplots$(if $(filter Darwin,$(OS_NAME)),.dylib,.so)
 LIB     := target/release/libjplots
+MAIL    := target/release/jplots-mail
 DIST    := target/dist
 VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 
@@ -50,15 +54,17 @@ images: build
 
 # `install -D` is GNU-only, so this is mkdir plus cp: the same result on both platforms.
 install: build
-	@mkdir -p $(PREFIX) $(QHOME)
+	@mkdir -p $(PREFIX) $(QHOME) $(BINDIR)
 	cp $(BUILT) $(PREFIX)/libjplots.so && chmod 755 $(PREFIX)/libjplots.so
 	cp q/plt.q $(QHOME)/plt.q && chmod 644 $(QHOME)/plt.q
-	@echo "installed $(PREFIX)/libjplots.so and $(QHOME)/plt.q"
+	cp $(MAIL) $(BINDIR)/jplots-mail && chmod 755 $(BINDIR)/jplots-mail
+	@echo "installed $(PREFIX)/libjplots.so, $(QHOME)/plt.q and $(BINDIR)/jplots-mail"
 
 # A release artifact: the library, the q front end, and the licence.
 dist: build test-rust
 	@rm -rf $(DIST)/jplots-$(VERSION) && mkdir -p $(DIST)/jplots-$(VERSION)
 	cp $(BUILT) $(DIST)/jplots-$(VERSION)/libjplots.so
+	cp $(MAIL) $(DIST)/jplots-$(VERSION)/jplots-mail
 	cp q/plt.q LICENSE README.md $(DIST)/jplots-$(VERSION)/
 	cd $(DIST) && tar czf jplots-$(VERSION)-$(OS)-$(ARCH).tar.gz jplots-$(VERSION)
 	@echo "$(DIST)/jplots-$(VERSION)-$(OS)-$(ARCH).tar.gz"

@@ -1,9 +1,9 @@
 / report.q: a data quality check that mails itself.
-/    q examples/report.q -q                    look at it in the terminal
-/    q examples/report.q -q kitty | jplots-mail | sendmail -t
-/ The renderer is named on the command line, so the SAME file is the thing you develop
-/ interactively and the thing cron runs. Capture with `kitty` for mail: it carries truecolour,
-/ where sixel has already been reduced to a 256-colour palette.
+/    q examples/report.q                     look at it in the terminal
+/    q examples/report.q | jplots-mail | sendmail -t
+/ The SAME file is the thing you develop interactively and the thing cron runs. A renderer can
+/ still be named on the command line to force one, but neither that nor `-q` is needed: the
+/ default is detected, and `jplots-mail` decodes whichever one it is back to pixels.
 / (No bare "/" lines in this file: a lone slash opens a block comment to EOF.)
 
 \l q/plt.q

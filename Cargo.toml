@@ -3,7 +3,7 @@ name = "jplots"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Terminal plots for q over the kitty graphics protocol"
+description = "Terminal plots for q over the sixel and kitty graphics protocols"
 repository = "https://github.com/jparmstrong/jplots"
 readme = "README.md"
 keywords = ["kdb", "q", "plot", "terminal", "kitty"]
@@ -51,7 +51,7 @@ libc = "0.2"
 minijinja = { version = "2", optional = true, default-features = false, features = [
   "builtins",
   "serde",
-], }
+] }
 
 [profile.release]
 opt-level = 2

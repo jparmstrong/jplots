@@ -22,7 +22,7 @@ Linux x64, or macOS on Apple silicon. Download the release tarball, or build it:
 
 ```sh
 make            # -> target/release/libjplots.so
-make install    # -> $QHOME/l64/libjplots.so and $QHOME/plt.q
+make install    # -> $QHOME/l64/libjplots.so, $QHOME/plt.q, ~/.local/bin/jplots-mail
 ```
 
 ## Plotting
@@ -184,7 +184,7 @@ back to them is the terminal's business.
 become PNG parts, and the order is kept, so a report reads as it did in the terminal.
 
 ```sh
-q examples/report.q -q kitty | jplots-mail | sendmail -t
+q examples/report.q | jplots-mail | sendmail -t
 ```
 
 It reads bytes, so **any command works**, not only q. The sending script names its own headers
@@ -200,10 +200,9 @@ parts in a `multipart/related` message, which is what Outlook will load; `--data
 self-contained file instead. `--template FILE` takes a Jinja2 body template, `--title` sets a
 heading, `--html` emits the body with no message headers.
 
-Capture with `kitty` for mail even though sixel is the terminal default: it carries truecolour,
-where sixel has already been quantised to 256 colours. Pin `.plt.size` and use
-`.plt.theme:`` `light ``, since a redirected stdout has no terminal to measure and mail is read
-on white.
+Either renderer works: the charts are decoded back to pixels, so the protocol they arrived in
+does not survive into the message. Pin `.plt.size` and use `.plt.theme:`` `light ``, since a
+redirected stdout has no terminal to measure and mail is read on white.
 
 ## How it works
 
