@@ -130,9 +130,14 @@ if[not `detect in key `.plt;
 .plt.hbar:{[x]
   o:()!(); if[.plt.isopt x; o:((key x) except `data)#x; x:x`data];
   / A table or a keyed table; a plain dict (`exec v by k`) is already labels against values.
+  g:$[99h<>type x; (); 98h<>type key x; (); .plt.cats (key x) last keys x];
   x:$[98h=type x; .plt.hl x; 99h<>type x; x; 98h=type value x; .plt.hl 0!x; x];
   s:.plt.mk[`hbar;x];
-  .plt.draw (s,`xlabel`ylabel!.plt.at[s;;""] each `ylabel`xlabel),o }
+  s:s,`xlabel`ylabel!.plt.at[s;;""] each `ylabel`xlabel;
+  / A keyed table colours each bar by its LAST key: `by query, cache` gives cold one colour
+  / and warm another, with a key naming them. One key colours every row in turn.
+  if[count g; s[`groups]:g];
+  .plt.draw s,o }
 / OHLC candlesticks. The renderer takes open/high/low/close POSITIONALLY, so the columns are
 / arranged here by name and a missing one is caught in q where the message can say which.
 / x is whatever column is left over: a time, a timestamp or a date.

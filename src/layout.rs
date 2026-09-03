@@ -648,6 +648,20 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
         0
     };
     let xfmt = if p.kind == Kind::HBar { TickFmt::Num } else { p.xfmt };
+    // A keyed hbar colours each bar by its group. Only with ONE series: several already
+    // take a colour each, and two colour codes on one bar would say nothing.
+    let by_group = p.kind == Kind::HBar && !p.groups.is_empty() && main.len() == 1;
+    let mut group_names: Vec<&str> = Vec::new();
+    let group_of: Vec<usize> = p
+        .groups
+        .iter()
+        .map(|g| {
+            group_names.iter().position(|n| *n == g).unwrap_or_else(|| {
+                group_names.push(g);
+                group_names.len() - 1
+            })
+        })
+        .collect();
     let (yt, ylab): (Vec<f64>, Vec<String>) = if p.kind == Kind::HBar {
         let want = ((h * 0.8 / (glyph_h * 1.5)) as usize).max(1);
         let every = hbar_rows.div_ceil(want).max(1);
@@ -822,6 +836,10 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
                     if !v.is_finite() || j >= hbar_rows {
                         continue;
                     }
+                    let col = match group_of.get(j) {
+                        Some(g) if by_group => PALETTE[g % PALETTE.len()],
+                        _ => col,
+                    };
                     // Row 0 at the top, so the chart reads in the table's own order.
                     let cy = sy((hbar_rows - 1 - j) as f64) - slot * 0.4 + bh * *i as f64;
                     let (end, base) = (sx(*v), sx(0.0));
@@ -936,19 +954,42 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
         .enumerate()
         .filter(|(_, s)| !s.name.is_empty())
         .collect();
-    // A candlestick's four series are one instrument, not four things to tell apart, and
-    // listing open/high/low/close in a key explains nothing and covers the data.
-    let want_legend =
-        p.kind != Kind::Candle && (named.len() > 1 || (named.len() == 1 && p.series.len() > 1));
-    if want_legend {
+    // What each key row shows: the series' own colour so an entry cannot disagree with what
+    // was drawn, and a swatch shaped like the series rather than a hairline for everything.
+    // A band's is a translucent block; a bar's a solid one; a scatter's a marker.
+    let entries: Vec<(&str, crate::Rgb, Option<&Series>)> = if by_group {
+        // The groups repeat (cold, warm, cold, warm) and are worth a key. Distinct on every
+        // row, they only restate the labels already down the left.
+        if group_names.len() < p.groups.len() {
+            group_names
+                .iter()
+                .enumerate()
+                .map(|(g, n)| (*n, PALETTE[g % PALETTE.len()], None))
+                .collect()
+        } else {
+            Vec::new()
+        }
+    } else if p.kind == Kind::Candle
+        || !(named.len() > 1 || (named.len() == 1 && p.series.len() > 1))
+    {
+        // A candlestick's four series are one instrument, not four things to tell apart,
+        // and listing open/high/low/close in a key explains nothing and covers the data.
+        Vec::new()
+    } else {
+        named
+            .iter()
+            .map(|(i, se)| (se.name.as_str(), se.colour.unwrap_or(PALETTE[i % PALETTE.len()]), Some(*se)))
+            .collect()
+    };
+    if !entries.is_empty() {
         let lh = glyph_h + 4.0 * s as f64;
         let chip = 14.0 * s as f64;
-        let tw = named
+        let tw = entries
             .iter()
-            .map(|(_, se)| c.text_size(&se.name, s).0)
+            .map(|(n, ..)| c.text_size(n, s).0)
             .fold(0.0, f64::max);
         let bw = chip + 6.0 * s as f64 + tw + 2.0 * pad;
-        let bh = lh * named.len() as f64 + pad;
+        let bh = lh * entries.len() as f64 + pad;
         // Put the box in whichever corner the data uses least. A fixed corner sat on top
         // of the series often enough to matter: a rising line and a top-right legend are
         // the single most common chart there is.
@@ -974,15 +1015,10 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
             .min_by_key(|(bx, by)| occupancy(*bx, *by))
             .expect("four corners");
         c.rect(bx, by, bw, bh, th.bg.mix(th.fg, 0.08));
-        for (row, (i, se)) in named.iter().enumerate() {
-            // The series' own colour, so a key entry cannot disagree with what was drawn.
-            let col = se.colour.unwrap_or(PALETTE[i % PALETTE.len()]);
+        for (row, (name, col, se)) in entries.iter().enumerate() {
+            let col = *col;
             let cy = by + pad / 2.0 + lh * row as f64 + lh / 2.0;
-            // The swatch shows what the series LOOKS like: a bar chart keyed by hairlines
-            // makes the reader match colours instead of shapes.
-            // A band's swatch is a translucent block, because that is what it looks like on
-            // the chart; a line swatch would claim it was a line.
-            if !se.lo.is_empty() {
+            if let Some(se) = se.filter(|se| !se.lo.is_empty()) {
                 c.polygon(
                     &[
                         (bx + pad, cy - lh * 0.3),
@@ -997,19 +1033,19 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
                     c.line((bx + pad, cy), (bx + pad + chip, cy), col, line_w);
                 }
             } else {
-                match if se.overlay { Kind::Line } else { p.kind } {
-                Kind::Bar | Kind::HBar | Kind::Hist => {
-                    c.rect(bx + pad, cy - lh * 0.25, chip, lh * 0.5, col)
-                }
-                Kind::Scatter => {
-                    c.marker((bx + pad + chip / 2.0, cy), (1.8 * s as f64).max(1.5), col)
-                }
-                _ => c.line((bx + pad, cy), (bx + pad + chip, cy), col, line_w),
+                match if se.is_some_and(|se| se.overlay) { Kind::Line } else { p.kind } {
+                    Kind::Bar | Kind::HBar | Kind::Hist => {
+                        c.rect(bx + pad, cy - lh * 0.25, chip, lh * 0.5, col)
+                    }
+                    Kind::Scatter => {
+                        c.marker((bx + pad + chip / 2.0, cy), (1.8 * s as f64).max(1.5), col)
+                    }
+                    _ => c.line((bx + pad, cy), (bx + pad + chip, cy), col, line_w),
                 }
             }
             c.text(
                 (bx + pad + chip + 6.0 * s as f64, cy),
-                &se.name,
+                name,
                 th.fg,
                 TextStyle::new(Align::Start, Align::Middle, s),
             );
@@ -1252,6 +1288,37 @@ mod tests {
         let widths: Vec<usize> = (0..200).map(run).filter(|n| *n > 0).collect();
         assert!(widths.len() > 2, "no bars drawn");
         assert!(widths[0] > 5 * widths[widths.len() - 1], "row 0 is not the long bar on top: {widths:?}");
+    }
+
+    /// A keyed hbar colours each bar by its group, so cold and warm rows come out in two
+    /// palette colours rather than one.
+    #[test]
+    fn hbar_groups_colour_the_bars() {
+        let p = Plot {
+            kind: Kind::HBar,
+            series: vec![Series {
+                name: "v".into(),
+                x: vec![],
+                y: vec![5.0, 5.0, 5.0, 5.0],
+                overlay: false,
+                ..Default::default()
+            }],
+            xcats: ["a", "b", "c", "d"].iter().map(|s| s.to_string()).collect(),
+            groups: ["cold", "warm", "cold", "warm"].iter().map(|s| s.to_string()).collect(),
+            xfmt: TickFmt::Cat,
+            width: 400,
+            height: 200,
+            ..Default::default()
+        };
+        let r = p.raster();
+        let count = |col: Rgb| {
+            r.bytes()
+                .chunks(3)
+                .filter(|px| Rgb(px[0], px[1], px[2]) == col)
+                .count()
+        };
+        assert!(count(PALETTE[0]) > 100, "no bars in the first colour");
+        assert!(count(PALETTE[1]) > 100, "no bars in the second colour");
     }
 
     /// A panic here takes the whole session down, so mismatched and empty series must be

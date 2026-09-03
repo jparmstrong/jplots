@@ -238,6 +238,7 @@ pub unsafe fn plot_from_spec(spec: K) -> Result<Plot, String> {
         beta: field(spec, "beta").map_or_else(Vec::new, |v| series_data(v)),
         alpha: field(spec, "alpha").map_or_else(Vec::new, |v| series_data(v)),
         corr: field(spec, "corr").map_or_else(Vec::new, |v| series_data(v)),
+        groups: field(spec, "groups").map_or_else(Vec::new, |v| strings(v)),
         bins: field_nums(spec, "bins")
             .first()
             .copied()

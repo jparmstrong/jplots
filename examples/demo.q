@@ -38,9 +38,10 @@ if[count .z.x; .plt.renderer:`$first .z.x]
 
 .demo.pnl:([] day:`MON`TUE`WED`THU`FRI; usd:12.4 -5.1 8.8 -11.9 3.2)
 
-/ A benchmark table: two text columns name each row, and the one numeric column is the bar.
-.demo.bench:([] query:`vwap`vwap`ohlc`ohlc`asof`asof; cache:`cold`warm`cold`warm`cold`warm;
-                seconds:171.55 92.134 240.65 164.31 330.96 57.271)
+/ A benchmark table keyed by query and cache: the keys label each row, the value is the bar,
+/ and the LAST key colours it, so cold and warm come out in two colours with a key.
+.demo.bench:([query:`vwap`vwap`ohlc`ohlc`asof`asof; cache:`cold`warm`cold`warm`cold`warm]
+               seconds:171.55 92.134 240.65 164.31 330.96 57.271)
 
 / Three names, each with its own price level, so one scatter cluster per name.
 .demo.cloud:{[sym;seed;cx;cy] ([] sym:60#sym;
@@ -90,7 +91,7 @@ if[count .z.x; .plt.renderer:`$first .z.x]
 -1 "5/12  bar: several value columns become side-by-side groups with a key";
 .plt.bar ([title:"revenue by quarter"; ylabel:"usd (bn)"; data:.demo.rev])
 
--1 "6/12  hbar: one bar per row, top row first; the text columns label it, the number sizes it";
+-1 "6/12  hbar: one bar per row, top row first, labelled by its keys and coloured by the last";
 .plt.hbar ([title:"query runtime"; data:.demo.bench])
 
 -1 "7/12  histogram: pass the observations; the bins are computed for you";

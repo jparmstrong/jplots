@@ -291,6 +291,10 @@ pub struct Plot {
     /// it is the summary rather than the drawing.
     pub corr: Vec<Vec<f64>>,
     pub bins: usize,
+    /// `HBar` only: a group label per row, from the last key of a keyed table. Bars are
+    /// coloured by group, and when the groups repeat the legend names them instead of the
+    /// series: cold against warm, rather than a key that lists every row.
+    pub groups: Vec<String>,
     pub theme: Theme,
     /// Integer glyph scale. `0` derives one from the image width, which is only a guess:
     /// the caller should pass the terminal's, via [`kitty::Metrics::font_scale`].
@@ -315,6 +319,7 @@ impl Default for Plot {
             alpha: Vec::new(),
             corr: Vec::new(),
             bins: 30,
+            groups: Vec::new(),
             theme: Theme::dark(),
             font: 0,
         }

@@ -156,6 +156,13 @@ ht:([] query:`q1`q1`q2; runtime:("CQ";"REF";"CQ"); elapsed:1 2 3f)
 .t.eq["hbar draws a table";            .plt.hbar ht; (::)]
 .t.eq["hbar with options";             .plt.hbar ([title:"t"; data:ht]); (::)]
 .t.eq["hbar draws a keyed table";      .plt.hbar select sum elapsed by query from ht; (::)]
+/ A keyed table colours its bars by the LAST key, so `by query, cache` is coloured by cache.
+kt:([q:`a`a`b`b; cache:`cold`warm`cold`warm] v:1 2 3 4f)
+.t.eq["keyed: groups are the last key"; {[t] .plt.draw:{x`groups}; r:.plt.hbar t; r}[kt]; ("cold";"warm";"cold";"warm")]
+.plt.draw:.plt.lib 2:(`draw;1)
+.t.ok["unkeyed: no groups";            not `groups in key {.plt.draw:{x}; r:.plt.hbar x; r}[ht]]
+.plt.draw:.plt.lib 2:(`draw;1)
+.t.eq["keyed hbar draws";              .plt.hbar kt; (::)]
 .t.eq["hbar draws a vector";           .plt.hbar 1 2 3f; (::)]
 
 .t.section:"backends"
