@@ -32,6 +32,7 @@ examples, and runs from where it lands without installing.
 .plt.line    select date, close, vwap from trade
 .plt.scatter select px, size from trade
 .plt.bar     select cnt:count i by sym from trade
+.plt.hbar    select query, runtime, elapsed from bench       / one bar per row, labelled
 .plt.hist    exec ret from returns
 .plt.candle  select time,open,high,low,close by 5 xbar time.minute from trade
 .plt.by[`scatter; `sym; select sym,close,vwap from trade]   / one series per group
@@ -46,6 +47,8 @@ examples, and runs from where it lands without installing.
 | `.plt.scatter select close, vwap from trade` | `.plt.hist exec ret from returns` |
 | ![a bar chart keyed by ticker symbol](docs/img/bar.png) | ![two value columns as side-by-side bar groups](docs/img/bar-grouped.png) |
 | `.plt.bar select last close by ticker from trade` | two value columns, side by side |
+| ![horizontal bars, one per benchmark row, labelled by query and runtime](docs/img/hbar.png) | |
+| `.plt.hbar select query, runtime, elapsed from bench` | text columns label the row, numeric ones are the bars |
 | ![OHLC candlesticks over a clock axis](docs/img/candle.png) | ![three scatter clusters, one per ticker, each its own colour](docs/img/clusters.png) |
 | `.plt.candle select open,high,low,close by 5 xbar time.minute from trade` | ``.plt.by[`scatter; `sym; t]`` |
 

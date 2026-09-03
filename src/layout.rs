@@ -584,6 +584,13 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
                 bounds(p.series.iter().flat_map(|s| s.y.iter().copied())).unwrap_or((0.0, 1.0));
             (-0.5, n as f64 - 0.5, lo, hi)
         }
+        // A bar chart on its side: the values run along x and the rows down y.
+        Kind::HBar => {
+            let n = main.first().map_or(0, |(_, se)| se.y.len());
+            let (lo, hi) =
+                bounds(p.series.iter().flat_map(|s| s.y.iter().copied())).unwrap_or((0.0, 1.0));
+            (lo, hi, -0.5, n as f64 - 0.5)
+        }
         _ => {
             let (a, b) =
                 bounds(p.series.iter().flat_map(|s| s.x.iter().copied())).unwrap_or((0.0, 1.0));
@@ -611,23 +618,55 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
         // Bars are measured FROM zero, so the axis has to contain it, and both ends need
         // headroom independently. Padding only the top leaves a negative bar running out of
         // the plot rect and over the x tick labels.
-        let (mut lo, mut hi) = (y0.min(0.0), y1.max(0.0));
-        if hi <= lo {
-            hi = lo + 1.0;
+        let from_zero = |a: f64, b: f64| {
+            let (mut lo, mut hi) = (a.min(0.0), b.max(0.0));
+            if hi <= lo {
+                hi = lo + 1.0;
+            }
+            let room = (hi - lo) * 0.08;
+            if lo < 0.0 {
+                lo -= room;
+            }
+            if hi > 0.0 {
+                hi += room;
+            }
+            (lo, hi)
+        };
+        if p.kind == Kind::HBar {
+            (x0, x1) = from_zero(x0, x1);
+        } else {
+            (y0, y1) = from_zero(y0, y1);
         }
-        let room = (hi - lo) * 0.08;
-        if lo < 0.0 {
-            lo -= room;
-        }
-        if hi > 0.0 {
-            hi += room;
-        }
-        (y0, y1) = (lo, hi);
     }
 
     // ---- ticks (before margins: the labels decide how much room the axes need)
-    let (yt, ystep) = nice_ticks(y0, y1, (h / (glyph_h * 3.0)).clamp(2.0, 10.0) as usize);
-    let (xt, xstep, xdstep) = match p.xfmt {
+    // An hbar's categories sit on y, one per row, top row first, subsampled by the height
+    // the labels need; its x is then numeric whatever the spec's `xfmt` said.
+    let hbar_rows = if p.kind == Kind::HBar {
+        main.first().map_or(0, |(_, se)| se.y.len())
+    } else {
+        0
+    };
+    let xfmt = if p.kind == Kind::HBar { TickFmt::Num } else { p.xfmt };
+    let (yt, ylab): (Vec<f64>, Vec<String>) = if p.kind == Kind::HBar {
+        let want = ((h * 0.8 / (glyph_h * 1.5)) as usize).max(1);
+        let every = hbar_rows.div_ceil(want).max(1);
+        let rows: Vec<usize> = (0..hbar_rows).step_by(every).collect();
+        (
+            rows.iter().map(|j| (hbar_rows - 1 - j) as f64).collect(),
+            rows.iter()
+                .map(|j| p.xcats.get(*j).cloned().unwrap_or_else(|| j.to_string()))
+                .collect(),
+        )
+    } else {
+        let (yt, ystep) = nice_ticks(y0, y1, (h / (glyph_h * 3.0)).clamp(2.0, 10.0) as usize);
+        let ylab = yt
+            .iter()
+            .map(|v| fmt_tick(*v, p.yfmt, ystep, DateStep::Day, &[]))
+            .collect();
+        (yt, ylab)
+    };
+    let (xt, xstep, xdstep) = match xfmt {
         TickFmt::Cat => {
             // Subsample from the width the labels ACTUALLY need. A guess based on the
             // glyph box drops labels that would have fitted comfortably.
@@ -654,13 +693,9 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
             (t, st, DateStep::Day)
         }
     };
-    let ylab: Vec<String> = yt
-        .iter()
-        .map(|v| fmt_tick(*v, p.yfmt, ystep, DateStep::Day, &[]))
-        .collect();
     let xlab: Vec<String> = xt
         .iter()
-        .map(|v| fmt_tick(*v, p.xfmt, xstep, xdstep, &p.xcats))
+        .map(|v| fmt_tick(*v, xfmt, xstep, xdstep, &p.xcats))
         .collect();
     let ytw = ylab.iter().map(|l| c.text_size(l, s).0).fold(0.0, f64::max);
 
@@ -722,6 +757,9 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
     if y0 < 0.0 && y1 > 0.0 {
         c.line((px, sy(0.0)), (px + pw, sy(0.0)), th.axis, 1.0);
     }
+    if p.kind == Kind::HBar && x0 < 0.0 && x1 > 0.0 {
+        c.line((sx(0.0), py), (sx(0.0), py + ph), th.axis, 1.0);
+    }
     c.line((px, py), (px, py + ph), th.axis, 1.0);
     c.line((px, py + ph), (px + pw, py + ph), th.axis, 1.0);
 
@@ -771,6 +809,23 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
                     let cx = sx(j as f64) - slot * 0.4 + bw * *i as f64;
                     let (top, base) = (sy(*y), sy(0.0));
                     c.rect(cx, top.min(base), bw, (base - top).abs().max(1.0), col);
+                }
+            }
+        }
+        Kind::HBar => {
+            let n = main.len().max(1);
+            let slot = ph / (y1 - y0);
+            let bh = slot * 0.8 / n as f64;
+            for (i, ser) in main.iter() {
+                let col = PALETTE[i % PALETTE.len()];
+                for (j, v) in ser.y.iter().enumerate() {
+                    if !v.is_finite() || j >= hbar_rows {
+                        continue;
+                    }
+                    // Row 0 at the top, so the chart reads in the table's own order.
+                    let cy = sy((hbar_rows - 1 - j) as f64) - slot * 0.4 + bh * *i as f64;
+                    let (end, base) = (sx(*v), sx(0.0));
+                    c.rect(end.min(base), cy, (end - base).abs().max(1.0), bh, col);
                 }
             }
         }
@@ -943,7 +998,9 @@ pub fn draw(p: &Plot, c: &mut dyn Canvas) {
                 }
             } else {
                 match if se.overlay { Kind::Line } else { p.kind } {
-                Kind::Bar | Kind::Hist => c.rect(bx + pad, cy - lh * 0.25, chip, lh * 0.5, col),
+                Kind::Bar | Kind::HBar | Kind::Hist => {
+                    c.rect(bx + pad, cy - lh * 0.25, chip, lh * 0.5, col)
+                }
                 Kind::Scatter => {
                     c.marker((bx + pad + chip / 2.0, cy), (1.8 * s as f64).max(1.5), col)
                 }
@@ -1045,7 +1102,7 @@ mod tests {
     /// guard against an empty-series or degenerate-range crash reaching the REPL.
     #[test]
     fn every_kind_draws() {
-        for kind in [Kind::Line, Kind::Scatter, Kind::Bar, Kind::Hist] {
+        for kind in [Kind::Line, Kind::Scatter, Kind::Bar, Kind::HBar, Kind::Hist] {
             let p = Plot {
                 kind,
                 series: vec![Series {
@@ -1162,6 +1219,41 @@ mod tests {
         );
     }
 
+    /// An hbar reads like the table it came from: the first row is the TOP bar, and a bar
+    /// runs from zero along x. Checked on the pixels, since the row order is the one thing
+    /// a transposed bar chart can get wrong without any test noticing.
+    #[test]
+    fn hbar_rows_read_top_down() {
+        let p = Plot {
+            kind: Kind::HBar,
+            series: vec![Series {
+                name: "v".into(),
+                x: vec![],
+                y: vec![10.0, 1.0],
+                overlay: false,
+                ..Default::default()
+            }],
+            xcats: vec!["long".into(), "short".into()],
+            xfmt: TickFmt::Cat,
+            width: 400,
+            height: 200,
+            ..Default::default()
+        };
+        let r = p.raster();
+        let bar = PALETTE[0];
+        let run = |y: usize| {
+            (0..400)
+                .filter(|x| {
+                    let i = (y * 400 + x) * 3;
+                    Rgb(r.bytes()[i], r.bytes()[i + 1], r.bytes()[i + 2]) == bar
+                })
+                .count()
+        };
+        let widths: Vec<usize> = (0..200).map(run).filter(|n| *n > 0).collect();
+        assert!(widths.len() > 2, "no bars drawn");
+        assert!(widths[0] > 5 * widths[widths.len() - 1], "row 0 is not the long bar on top: {widths:?}");
+    }
+
     /// A panic here takes the whole session down, so mismatched and empty series must be
     /// merely uninteresting. `.plt.xy` takes x and y as separate arguments, so nothing
     /// guarantees they are the same length.
@@ -1242,7 +1334,7 @@ mod tests {
             vec![s(vec![f64::NAN, f64::NAN], vec![f64::NAN, f64::NAN])],
             vec![s(vec![f64::INFINITY], vec![f64::NEG_INFINITY])],
         ] {
-            for kind in [Kind::Line, Kind::Scatter, Kind::Bar, Kind::Hist] {
+            for kind in [Kind::Line, Kind::Scatter, Kind::Bar, Kind::HBar, Kind::Hist] {
                 let _ = Plot {
                     kind,
                     series: series.clone(),

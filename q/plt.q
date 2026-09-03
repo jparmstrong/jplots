@@ -56,11 +56,15 @@ if[not `detect in key `.plt;
 / units. `15 xbar time.minute` is how q buckets, and it yields minutes.
 .plt.xu:{t:abs type x; $[t=17h;60000f; t=18h;1000f; t=16h;1e-6; 1f]}
 .plt.xv:{(.plt.xu x)*"f"$x}                    / an x column in the renderer's unit
+/ Category labels from a column. `string` on a list of STRINGS splits each one into
+/ one-character strings, and the renderer then reads no label at all, so strings pass through.
+.plt.str:{$[10h=type x; x; string x]}
+.plt.cats:{.plt.str each x}
 / A bar sits at a POSITION, not at a value: bars are drawn at 0, 1, 2 and so on whatever the
 / x column held. The axis therefore has to carry LABELS, and a bar chart is categorical no
 / matter what it was made from. Without this the renderer formats the INDEX in the column's
 / own type, and a chart of daily volume for 2026 came out with an axis reading 2000.01.01.
-.plt.axf:{[k;f] $[k=`bar; `cat; f]}
+.plt.axf:{[k;f] $[k in `bar`hbar; `cat; f]}
 / A table: the FIRST column is x, every remaining column is a series named after itself.
 / A one-column table is that column against its row index.
 .plt.of:{[k;t]
@@ -70,7 +74,7 @@ if[not `detect in key `.plt;
   s:`kind`x`y`names`xfmt`xcats`xlabel!(k;
     $[not m; (); f=`cat; "f"$til count d xc; .plt.xv d xc];
     "f"$d yc; yc; f;
-    $[f=`cat; string d xc; ()];
+    $[f=`cat; .plt.cats d xc; ()];
     $[m; string xc; ""]);
   / One series draws no legend, so its column name would appear nowhere at all. Name the
   / y axis after it, the way the x axis is already named after the column it came from.
@@ -80,7 +84,7 @@ if[not `detect in key `.plt;
 .plt.od:{[k;d]
   f:.plt.axf[k; .plt.xf key d];
   `kind`x`y`xfmt`xcats!(k; $[f=`cat; "f"$til count d; .plt.xv key d]; enlist "f"$value d; f;
-    $[f=`cat; string key d; ()]) }
+    $[f=`cat; .plt.cats key d; ()]) }
 / A vector (y against its index) or a list of vectors (several series).
 .plt.ov:{[k;x] `kind`y!(k; "f"$$[0h=type x; x; enlist x]) }
 / The dict form: `data` carries whatever the plain form accepts, and the rest are per-plot
@@ -114,6 +118,21 @@ if[not `detect in key `.plt;
 .plt.scatter:{.plt.draw .plt.mk[`scatter;x]}
 .plt.bar:{.plt.draw .plt.mk[`bar;x]}
 .plt.hist:{.plt.draw .plt.mk[`hist;x]}
+/ Horizontal bars: one row of the table per bar, top row first, its label on the left. Every
+/ NON-numeric column is part of the label and every numeric one is a series, so a benchmark
+/ table of query, runtime and elapsed reads as one bar per query/runtime pair without the
+/ caller having to glue the two into a key first. The value axis is x, so the axis names the
+/ table form derived are swapped before any per-call option is applied on top.
+.plt.hl:{[t] d:flip t; c:cols t; v:c where (abs type each d c) in 5 6 7 8 9h; l:c except v;
+  if[0=count v; '"plt.hbar: no numeric column"];
+  k:$[count l; {" " sv .plt.cats x} each flip d l; string til count t];
+  flip ((enlist $[count l; `$" " sv string l; `row])!enlist k),v#d }
+.plt.hbar:{[x]
+  o:()!(); if[.plt.isopt x; o:((key x) except `data)#x; x:x`data];
+  / A table or a keyed table; a plain dict (`exec v by k`) is already labels against values.
+  x:$[98h=type x; .plt.hl x; 99h<>type x; x; 98h=type value x; .plt.hl 0!x; x];
+  s:.plt.mk[`hbar;x];
+  .plt.draw (s,`xlabel`ylabel!.plt.at[s;;""] each `ylabel`xlabel),o }
 / OHLC candlesticks. The renderer takes open/high/low/close POSITIONALLY, so the columns are
 / arranged here by name and a missing one is caught in q where the message can say which.
 / x is whatever column is left over: a time, a timestamp or a date.
@@ -128,7 +147,7 @@ if[not `detect in key `.plt;
   s:`kind`x`y`names`xfmt`xcats`xlabel!(`candle;
     $[f=`cat; "f"$til count d xc; .plt.xv d xc];
     "f"$d .plt.ohlc; .plt.ohlc; f;
-    $[f=`cat; string d xc; ()]; string xc);
+    $[f=`cat; .plt.cats d xc; ()]; string xc);
   .plt.draw (s,.plt.settings[]),o }
 / An overlay: extra series drawn as LINES on top of whatever the plot's own kind is, which
 / is how a fitted model is shown against the sample it came from:
@@ -241,6 +260,6 @@ if[not `detect in key `.plt;
   .plt.draw ((`kind`x`y`lo`hi`names`colours`xfmt`xcats`xlabel!(`bands;
     $[f=`cat; "f"$til count t; .plt.xv t xc];
     ys; los; his; nm; cs; f;
-    $[f=`cat; string t xc; ()]; string xc)),.plt.settings[]),o }
+    $[f=`cat; .plt.cats t xc; ()]; string xc)),.plt.settings[]),o }
 / Explicit x/y, when the data isn't already a table: `.plt.xy[`scatter;x;y]`.
 .plt.xy:{[k;x;y] .plt.draw `kind`x`y`xfmt!(k; .plt.xv x; "f"$$[0h=type y; y; enlist y]; .plt.xf x)}

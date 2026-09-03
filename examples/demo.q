@@ -38,6 +38,10 @@ if[count .z.x; .plt.renderer:`$first .z.x]
 
 .demo.pnl:([] day:`MON`TUE`WED`THU`FRI; usd:12.4 -5.1 8.8 -11.9 3.2)
 
+/ A benchmark table: two text columns name each row, and the one numeric column is the bar.
+.demo.bench:([] query:`vwap`vwap`ohlc`ohlc`asof`asof; cache:`cold`warm`cold`warm`cold`warm;
+                seconds:171.55 92.134 240.65 164.31 330.96 57.271)
+
 / Three names, each with its own price level, so one scatter cluster per name.
 .demo.cloud:{[sym;seed;cx;cy] ([] sym:60#sym;
     close:cx+.demo.g[60;seed]; vwap:cy+.demo.g[60;seed+7])}
@@ -63,16 +67,16 @@ if[count .z.x; .plt.renderer:`$first .z.x]
 / ---- the charts ---------------------------------------------------------------------
 .plt.size:900 420
 
--1 "1/11  line: x is the first column, one series per remaining column";
+-1 "1/12  line: x is the first column, one series per remaining column";
 .plt.line select date, close, vwap from .demo.trade
 
--1 "2/11  the same, styled: a dict of `data` plus per-plot options";
+-1 "2/12  the same, styled: a dict of `data` plus per-plot options";
 .plt.line ([
   title:  "ACME - close vs vwap";  / the bitmap font is ASCII; a dash, not an em-dash
   ylabel: "usd";
   data:   select date, close, vwap from .demo.trade ])
 
--1 "3/11  bar: a keyed table plots directly, its symbol key becoming a categorical axis";
+-1 "3/12  bar: a keyed table plots directly, its symbol key becoming a categorical axis";
 / Note the `sum`: `select turnover by sym` without an aggregate gives one NESTED LIST per
 / group, which is a list of series rather than a series. That is q, not jplots.
 .plt.bar ([
@@ -80,23 +84,26 @@ if[count .z.x; .plt.renderer:`$first .z.x]
   ylabel: "usd (bn)";
   data:   select sum turnover by sym from `turnover xdesc .demo.vol ])
 
--1 "4/11  bar: signed values sit either side of a zero line";
+-1 "4/12  bar: signed values sit either side of a zero line";
 .plt.bar ([title:"P&L by day"; ylabel:"usd (m)"; data:.demo.pnl])
 
--1 "5/11  bar: several value columns become side-by-side groups with a key";
+-1 "5/12  bar: several value columns become side-by-side groups with a key";
 .plt.bar ([title:"revenue by quarter"; ylabel:"usd (bn)"; data:.demo.rev])
 
--1 "6/11  histogram: pass the observations; the bins are computed for you";
+-1 "6/12  hbar: one bar per row, top row first; the text columns label it, the number sizes it";
+.plt.hbar ([title:"query runtime"; data:.demo.bench])
+
+-1 "7/12  histogram: pass the observations; the bins are computed for you";
 .plt.hist ([title:"daily returns"; xlabel:"pct"; bins:40; data:.demo.ret])
 
--1 "7/11  scatter: two columns of a table are x and y";
+-1 "8/12  scatter: two columns of a table are x and y";
 .plt.scatter ([title:"close vs vwap"; data:select close, vwap from .demo.trade])
 
--1 "8/11  scatter with a fitted line over it: `overlay` draws its series as lines on top";
+-1 "9/12  scatter with a fitted line over it: `overlay` draws its series as lines on top";
 .plt.scatter ([title:"close vs vwap, least squares"; data:select close, vwap from .demo.trade;
   overlay:.plt.fit[.demo.trade`close; .demo.trade`vwap]])
 
--1 "9/11  scatter matrix: every pair of return series, with its least-squares line";
+-1 "10/12  scatter matrix: every pair of return series, with its least-squares line";
 / It draws AND returns the fit per ordered pair: the regression you would otherwise write out
 / by hand to read a number off the picture. `r` is symmetric; the slopes are not.
 .plt.size:820 820
@@ -105,10 +112,10 @@ if[count .z.x; .plt.renderer:`$first .z.x]
 -1 .Q.s 2#.demo.fit;
 -1 "";
 
--1 "10/11  scatter by group: one series per sym, each cluster its own colour and key entry";
+-1 "11/12  scatter by group: one series per sym, each cluster its own colour and key entry";
 .plt.by[`scatter; `sym; ([title:"close vs vwap by name"; data:.demo.quotes])]
 
--1 "11/11  bands: a translucent region per series, from a `style dictionary";
+-1 "12/12  bands: a translucent region per series, from a `style dictionary";
 / A rolling mean with 2 standard deviation edges. `.plt.bands` reads WHICH columns are the
 / centre and the edges from `style` rather than taking them positionally, so a band and a
 / plain line can sit in one chart.

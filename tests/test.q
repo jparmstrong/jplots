@@ -24,6 +24,8 @@ s:.plt.mk[`line;t]
                                        string 2026.01.01+til 5]
 .t.eq["and a line keeps the calendar"; .plt.mk[`line; select sum close by date from t]`xfmt; `date]
 .t.eq["symbol key is categorical";     .plt.mk[`bar; `a`b`c!1 2 3f]`xcats;     string `a`b`c]
+/ `string` of a list of strings splits each into characters, and the labels were lost.
+.t.eq["string labels survive";         .plt.mk[`bar; ([] k:("ab";"cd"); v:1 2f)]`xcats; ("ab";"cd")]
 / A single-series chart draws no legend, so without this its column name is nowhere.
 .t.eq["one series names the y axis";   .plt.mk[`line; select close from t]`ylabel;  "close"]
 .t.eq["scatter: x and y both named";   `xlabel`ylabel#.plt.mk[`scatter; select close, vwap from t];
@@ -76,6 +78,7 @@ s:.plt.mk[`line;t]
 .t.eq["scatter";                 .plt.scatter t;              (::)]
 .t.eq["bar";                     .plt.bar `a`b!1 2f;          (::)]
 .t.eq["hist";                    .plt.hist 1 2 3 4 5 6 7 8f;  (::)]
+.t.eq["hbar";                    .plt.hbar `a`b!1 2f;         (::)]
 .t.eq["empty series";            .plt.line 0#0f;              (::)]
 .t.eq["single point";            .plt.line enlist 1f;         (::)]
 .t.eq["all nulls";               .plt.line 3#0n;              (::)]
@@ -140,6 +143,20 @@ bt:([] d:2026.08.01 2026.08.02 2026.08.03; v:1 2 3f)
 .t.eq["a scatter keeps its dates"; (.plt.mk[`scatter;bt])`xfmt; `date]
 / The same for a dict, which is what `exec v by k` gives.
 .t.eq["a dict bar is categorical"; (.plt.mk[`bar; 2026.08.01 2026.08.02!1 2f])`xfmt; `cat]
+
+.t.section:"hbar"
+/ Every non-numeric column is part of the row's label, joined with a space, and the numeric
+/ ones are the bars. The categories ride as `xcats` and the renderer puts them on y, so the
+/ axis NAMES swap: the value column names x, the label columns name y.
+ht:([] query:`q1`q1`q2; runtime:("CQ";"REF";"CQ"); elapsed:1 2 3f)
+.t.eq["labels join the text columns"; (.plt.hl ht)`$"query runtime"; ("q1 CQ";"q1 REF";"q2 CQ")]
+.t.eq["numeric columns are the bars";  cols .plt.hl ht; `$("query runtime";"elapsed")]
+.t.eq["no label column: row index";    (.plt.hl ([] v:1 2f))`row; (enlist "0";enlist "1")]
+.t.ok["no numeric column signals";     (@[.plt.hl; ([] a:`x`y); {x}]) like "*numeric*"]
+.t.eq["hbar draws a table";            .plt.hbar ht; (::)]
+.t.eq["hbar with options";             .plt.hbar ([title:"t"; data:ht]); (::)]
+.t.eq["hbar draws a keyed table";      .plt.hbar select sum elapsed by query from ht; (::)]
+.t.eq["hbar draws a vector";           .plt.hbar 1 2 3f; (::)]
 
 .t.section:"backends"
 / `.plt.renderer` picks the escape sequence, not the drawing: both backends read the same raster,

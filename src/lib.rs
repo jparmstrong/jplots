@@ -42,6 +42,10 @@ pub enum Kind {
     Line,
     Scatter,
     Bar,
+    /// Horizontal bars, one row per category with its label on the left, the first row at
+    /// the top the way a table reads. The categories still arrive as `xcats`: they name the
+    /// bars, and which axis carries them is the renderer's business.
+    HBar,
     Hist,
     /// OHLC candlesticks. The series are positional (open, high, low, close), which the q
     /// side arranges by column name, so the renderer never has to guess.
@@ -202,6 +206,7 @@ impl Kind {
             "" | "line" => Kind::Line,
             "scatter" => Kind::Scatter,
             "bar" => Kind::Bar,
+            "hbar" => Kind::HBar,
             "hist" => Kind::Hist,
             "candle" => Kind::Candle,
             "matrix" => Kind::Matrix,
